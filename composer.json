@@ -1,0 +1,22 @@
+{
+  "name": "jacerider/fieldception",
+  "description": "Provides a field type that supports unlimited subfields.",
+  "type": "drupal-module",
+  "license": "GPL-2.0+",
+  "homepage": "https://github.com/jacerider/fieldception",
+  "authors": [
+    {
+      "name": "Cyle Carlson (JaceRider)",
+      "email": "jacerider@gmail.com",
+      "role": "Maintainer"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/jacerider/fieldception/issues",
+    "source": "https://github.com/jacerider/fieldception"
+  },
+  "minimum-stability": "dev",
+  "require": {
+    "drupal/core": "^8.8 || ^9"
+  }
+}

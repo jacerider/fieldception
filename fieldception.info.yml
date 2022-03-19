@@ -1,0 +1,5 @@
+name: Fieldception
+type: module
+description: Provides a field type that supports unlimited subfields.
+core_version_requirement: ^8.8 || ^9
+package: Field types
