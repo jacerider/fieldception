@@ -571,8 +571,10 @@ class FieldceptionItem extends FieldItemBase {
       }
     }
 
-    $entity = $form_state->getFormObject()->getEntity();
-    $entity_type = \Drupal::entityManager()->getDefinition($form_state->get('entity_type_id'));
+    /** @var \Drupal\Core\Entity\EntityFormInterface $form_object */
+    $form_object = $form_state->getFormObject();
+    $entity = $form_object->getEntity();
+    $entity_type = \Drupal::entityTypeManager()->getDefinition($form_state->get('entity_type_id'));
     $bundle = $form_state->get('bundle');
     $route_name = str_replace($entity_type->id() . '.', $entity_type->id() . '.' . $bundle . '.', $entity->id());
     $route_parameters = [

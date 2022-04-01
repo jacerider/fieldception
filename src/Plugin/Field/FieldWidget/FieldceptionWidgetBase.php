@@ -13,20 +13,13 @@ use Drupal\Component\Utility\NestedArray;
 use Symfony\Component\Validator\ConstraintViolationInterface;
 use Drupal\Component\Utility\SortArray;
 use Drupal\Core\Render\Markup;
-use Drupal\fieldception\Plugin\Field\FieldceptionTableTrait;
 use Drupal\Core\Field\FieldDefinitionInterface;
+use Drupal\Core\Field\WidgetInterface;
 
 /**
- * Plugin implementation of the 'double_field' widget.
- *
- * @FieldWidget(
- *   id = "fieldception",
- *   label = @Translation("Fieldception"),
- *   field_types = {"fieldception"}
- * )
+ * Fieldception widget base.
  */
-class FieldceptionWidget extends WidgetBase {
-  use FieldceptionTableTrait;
+class FieldceptionWidgetBase extends WidgetBase {
 
   /**
    * The fieldception helper.
@@ -48,24 +41,10 @@ class FieldceptionWidget extends WidgetBase {
    */
   public static function defaultSettings() {
     return [
-      'display' => 'default',
-      'draggable' => FALSE,
       'primary' => FALSE,
-      'fields_per_row' => 0,
       'more_label' => 'Add another item',
       'fields' => [],
     ] + parent::defaultSettings();
-  }
-
-  /**
-   * Get display options.
-   */
-  public static function displayOptions() {
-    return [
-      'default' => t('Default'),
-      'inline' => t('Inline'),
-      'table' => t('Table'),
-    ];
   }
 
   /**
@@ -79,32 +58,8 @@ class FieldceptionWidget extends WidgetBase {
     $cardinality = $this->fieldDefinition->getFieldStorageDefinition()->getCardinality();
 
     $element = [];
-    $element['display'] = [
-      '#type' => 'select',
-      '#title' => $this->t('Display as'),
-      '#default_value' => $settings['display'],
-      '#options' => $this->displayOptions(),
-      '#required' => TRUE,
-    ];
-
-    $options = [0 => 'All fields in same row'];
-    for ($i = 1; $i <= count($field_settings['storage']); $i++) {
-      $options[$i] = $i;
-    }
-    $element['fields_per_row'] = [
-      '#type' => 'select',
-      '#options' => $options,
-      '#required' => TRUE,
-      '#title' => $this->t('Fields per row'),
-      '#default_value' => $settings['fields_per_row'],
-    ];
 
     if ($cardinality !== 1) {
-      $element['draggable'] = [
-        '#type' => 'checkbox',
-        '#title' => $this->t('Allow values to be ordered'),
-        '#default_value' => $settings['draggable'],
-      ];
       $element['primary'] = [
         '#type' => 'checkbox',
         '#title' => $this->t('Allow primary selection'),
@@ -120,6 +75,7 @@ class FieldceptionWidget extends WidgetBase {
 
     $element['fields'] = [
       '#tree' => TRUE,
+      '#weight' => 100,
     ];
 
     foreach ($field_settings['storage'] as $subfield => $config) {
@@ -148,7 +104,9 @@ class FieldceptionWidget extends WidgetBase {
         '#title' => $config['label'],
         '#tree' => TRUE,
         '#id' => $wrapper_id,
-        '#element_validate' => [[get_class($this), 'settingsFormWidgetValidate']],
+        '#element_validate' => [
+          [get_class($this), 'settingsFormWidgetValidate'],
+        ],
       ];
       $element['fields'][$subfield]['type'] = [
         '#type' => 'select',
@@ -163,19 +121,6 @@ class FieldceptionWidget extends WidgetBase {
       ];
       $element['fields'][$subfield]['settings'] = [];
       $element['fields'][$subfield]['settings'] = $subfield_widget->settingsForm($element['fields'][$subfield]['settings'], $form_state);
-
-      $element['fields'][$subfield]['position'] = [
-        '#type' => 'select',
-        '#title' => $this->t('Position'),
-        '#options' => self::positionOptions(),
-        '#default_value' => $subfield_settings['position'],
-      ];
-      $element['fields'][$subfield]['size'] = [
-        '#type' => 'select',
-        '#title' => $this->t('Size'),
-        '#options' => self::sizeOptions(),
-        '#default_value' => $subfield_settings['size'],
-      ];
     }
 
     return $element;
@@ -204,16 +149,11 @@ class FieldceptionWidget extends WidgetBase {
    */
   public function settingsSummary() {
     $settings = $this->getSettings();
-    $field_settings = $this->getFieldSettings();
     $cardinality = $this->fieldDefinition->getFieldStorageDefinition()->getCardinality();
 
     $summary = [];
 
-    $summary[] = $this->t('Display as: %value', ['%value' => $this->displayOptions()[$this->getSetting('display')]]);
-    $summary[] = $this->t('Fields per row: %value', ['%value' => empty($settings['fields_per_row']) ? 'All' : $settings['fields_per_row']]);
-
     if ($cardinality !== 1) {
-      $summary[] = $this->t('Allow ordering: %value', ['%value' => $settings['draggable'] ? 'Yes' : 'No']);
       $summary[] = $this->t('Allow primary selection: %value', ['%value' => $settings['primary'] ? 'Yes' : 'No']);
       $summary[] = $this->t('More label: %value', ['%value' => $settings['more_label']]);
     }
@@ -230,10 +170,6 @@ class FieldceptionWidget extends WidgetBase {
     $allow_more = $cardinality == FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED && !$form_state->isProgrammed();
     $title = $this->fieldDefinition->getLabel();
     $description = FieldFilteredMarkup::create(\Drupal::token()->replace($this->fieldDefinition->getDescription()));
-
-    // $storage = \Drupal::entityTypeManager()->getStorage('file');
-    // $files = $storage->delete($storage->loadMultiple($storage->getQuery()->condition('fid', 335, '>')->execute()));
-    // ksm($files);
 
     $elements['#type'] = 'fieldset';
     $elements['#title'] = $title;
@@ -264,7 +200,6 @@ class FieldceptionWidget extends WidgetBase {
       ];
     }
     $elements['widget']['#process'][] = [get_class($this), 'formWidgetProcess'];
-
     return $elements;
   }
 
@@ -334,10 +269,8 @@ class FieldceptionWidget extends WidgetBase {
     $parents = $form['#parents'];
     $field_name = $this->fieldDefinition->getName();
     $field_state = static::getWidgetState($parents, $field_name, $form_state);
-    $field_settings = $this->getFieldSettings();
     $allow_more = $cardinality == FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED && !$form_state->isProgrammed();
-    $draggable = $allow_more && !empty($settings['draggable']);
-    $primary = !$draggable && !empty($settings['primary']);
+    $primary = !empty($settings['primary']);
 
     if ($cardinality == FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED) {
       $field_state = static::getWidgetState($parents, $field_name, $form_state);
@@ -345,25 +278,9 @@ class FieldceptionWidget extends WidgetBase {
     }
     else {
       $max = $cardinality;
-      $is_multiple = ($cardinality > 1);
     }
 
-    $elements = [
-      '#type' => 'table',
-      '#field_name' => $field_name,
-      '#cardinality' => $cardinality,
-      '#cardinality_multiple' => $this->fieldDefinition->getFieldStorageDefinition()->isMultiple(),
-      '#required' => $this->fieldDefinition->isRequired(),
-      '#max_delta' => $max,
-    ];
-
-    foreach ($field_settings['storage'] as $subfield => $config) {
-      $elements['#header'][$subfield] = $config['label'];
-      if (!empty($field_settings['fields'][$subfield]['required'])) {
-        $elements['#header'][$subfield] .= '<span class="js-form-required form-required"></span>';
-      }
-      $elements['#header'][$subfield] = Markup::create($elements['#header'][$subfield]);
-    }
+    $elements = [];
 
     // Remove items that are no longer within delta limit.
     foreach ($items as $delta => $item) {
@@ -388,23 +305,12 @@ class FieldceptionWidget extends WidgetBase {
       $elements['#header'][] = '';
     }
 
-    if ($draggable) {
-      $elements['#header'][] = $this->t('Weight');
-      $elements['#tabledrag'] = [
-        [
-          'action' => 'order',
-          'relationship' => 'sibling',
-          'group' => 'table-sort-weight',
-        ],
-      ];
-    }
-
     if ($primary) {
       array_unshift($elements['#header'], $this->t('Primary'));
       $elements['#element_validate'][] = [get_class($this), 'validatePrimary'];
     }
 
-    for ($delta = 0; $delta <= $max; $delta++) {
+    for ($delta = 0; $delta < $max; $delta++) {
       // Add a new empty item if it doesn't exist yet at this delta.
       if (!isset($items[$delta])) {
         $items->appendItem();
@@ -414,13 +320,17 @@ class FieldceptionWidget extends WidgetBase {
         '#title' => '',
         '#descrition' => '',
       ];
+      $element['#attributes']['class'][] = 'fieldception-element';
 
       if ($delta == $max) {
         $element['#attributes']['class'][] = 'hidden';
       }
 
       if ($primary) {
-        $element_parents = array_merge($form['#parents'], [$field_name, 'primary']);
+        $element_parents = array_merge($form['#parents'], [
+          $field_name,
+          'primary',
+        ]);
         $element_path = array_shift($element_parents) . '[' . implode('][', $element_parents) . ']';
         $element['primary'] = [
           '#type' => 'radio',
@@ -441,7 +351,12 @@ class FieldceptionWidget extends WidgetBase {
       if ($allow_more) {
         $element['actions'] = [
           '#type' => 'actions',
-          '#wrapper_attributes' => ['class' => ['fieldception-actions', 'fieldception-size-min']],
+          '#wrapper_attributes' => [
+            'class' => [
+              'fieldception-actions',
+              'fieldception-size-min',
+            ],
+          ],
           'remove_button' => [
             '#delta' => $delta,
             '#name' => strtr($id_prefix, '-', '_') . '_' . $delta . '_remove_button',
@@ -460,21 +375,6 @@ class FieldceptionWidget extends WidgetBase {
             ],
           ],
         ];
-      }
-
-      if ($draggable) {
-        $element['weight'] = [
-          '#type' => 'weight',
-          '#title' => $this->t('Weight'),
-          '#title_display' => 'invisible',
-          '#default_value' => $delta,
-          '#attributes' => [
-            'class' => [
-              'table-sort-weight',
-            ],
-          ],
-        ];
-        $element['#attributes']['class'][] = 'draggable';
       }
 
       $elements[$delta] = $element;
@@ -571,41 +471,34 @@ class FieldceptionWidget extends WidgetBase {
         // to make sure we at least have an empty item.
         $subfield_items->appendItem();
       }
-
-      $element[$subfield] = [
-        '#title' => '',
-        '#description' => '',
-        '#required' => FALSE,
-        '#field_name' => $field_definition->getName(),
-        '#field_parents' => $subform['#parents'],
-        '#delta' => 0,
-        '#weight' => 0,
-        // Integrations with field_labels module.
-        '#title_lock' => TRUE,
-        '#element_validate' => [[get_class($this), 'formElementValidate']],
-        '#subfield_config' => $config,
-      ];
-      $element[$subfield] = $subfield_widget->formElement(
-        $subfield_items,
-        0,
-        $element[$subfield],
-        $form,
-        $form_state
-      );
-
-      if (isset($element[$subfield]['#type']) && in_array($element[$subfield]['#type'], ['fieldset', 'details'])) {
-        $element[$subfield]['#type'] = 'container';
-      }
-
-      if (!empty($subfield_settings['position'])) {
-        $element[$subfield]['#wrapper_attributes']['class'][] = 'fieldception-position-' . $subfield_settings['position'];
-      }
-
-      if (!empty($subfield_settings['size'])) {
-        $element[$subfield]['#wrapper_attributes']['class'][] = 'fieldception-size-' . $subfield_settings['size'];
-      }
+      $element[$subfield] = $this->formSubfieldElement($subfield_items, $config, $subfield_widget, $subform, $form_state);
     }
+    return $element;
+  }
 
+  /**
+   * Build subfield element.
+   */
+  protected function formSubfieldElement(FieldItemListInterface $subfield_items, array $config, WidgetInterface $subfield_widget, array &$form, FormStateInterface $form_state) {
+    $element = [
+      '#title' => $config['label'],
+      '#description' => '',
+      '#required' => FALSE,
+      '#field_name' => $this->fieldDefinition->getName(),
+      '#field_parents' => $form['#parents'],
+      '#delta' => 0,
+      '#weight' => 0,
+      // Integrations with field_labels module.
+      '#title_lock' => TRUE,
+      '#element_validate' => [[get_class($this), 'formElementValidate']],
+      '#attributes' => [
+        'class' => [
+          'exo-form-element-name-' . str_replace(['_', ':'], '-', $subfield_items->getFieldDefinition()->getName()),
+        ],
+      ],
+      '#subfield_config' => $config,
+    ];
+    $element = $subfield_widget->formElement($subfield_items, 0, $element, $form, $form_state);
     return $element;
   }
 
@@ -613,7 +506,6 @@ class FieldceptionWidget extends WidgetBase {
    * {@inheritdoc}
    */
   public static function formElementValidate($element, FormStateInterface $form_state) {
-    // ksm($form_state->getValues());
   }
 
   /**
@@ -723,7 +615,7 @@ class FieldceptionWidget extends WidgetBase {
             $subfield,
           ]);
           $subform[$subfield_name]['widget'][0] = NestedArray::getValue($form, $subfield_widget_path);
-          if (!$subfield_widget->handlesMultipleValues()) {
+          if (!$subfield_widget->getPluginDefinition()['multiple_values']) {
             $subfield_value = [$subfield_value];
           }
           $form_state->setValue($subfield_path, $subfield_value);

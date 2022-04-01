@@ -39,6 +39,7 @@ class FieldceptionConfigSubscriber implements EventSubscriberInterface {
     foreach ($pending as $key => $config) {
       if (substr($key, 0, 14) == 'field.storage.') {
         if ($config['type'] == 'fieldception') {
+          print $config['id'];
           $entity = \Drupal::entityTypeManager()->getStorage('field_storage_config')->load($config['id']);
           $database = \Drupal::database();
           $tables = [
