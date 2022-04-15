@@ -1,0 +1,23 @@
+<?php
+
+/**
+ * @file
+ * Install hooks for exo_image.
+ */
+
+/**
+ * Migrade exo_image_media formatters to renamed exo_image_media_drimage.
+ */
+function fieldception_update_8001() {
+  if ($form_displays = \Drupal::entityTypeManager()->getStorage('entity_form_display')->loadMultiple()) {
+    foreach ($form_displays as $form_display_id => $form_display) {
+      /** @var \Drupal\Core\Entity\Display\EntityDisplayInterface $form_display */
+      foreach ($form_display->getComponents() as $field_name => $component) {
+        if (isset($component['type']) && $component['type'] == 'fieldception') {
+          $component['type'] = 'fieldception_table';
+          $form_display->setComponent($field_name, $component)->save();
+        }
+      }
+    }
+  }
+}
