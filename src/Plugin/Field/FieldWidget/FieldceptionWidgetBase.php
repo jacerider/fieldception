@@ -12,7 +12,6 @@ use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\NestedArray;
 use Symfony\Component\Validator\ConstraintViolationInterface;
 use Drupal\Component\Utility\SortArray;
-use Drupal\Core\Render\Markup;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\WidgetInterface;
 
@@ -43,6 +42,7 @@ class FieldceptionWidgetBase extends WidgetBase {
     return [
       'primary' => FALSE,
       'more_label' => 'Add another item',
+      'draggable' => FALSE,
       'fields' => [],
     ] + parent::defaultSettings();
   }
@@ -59,6 +59,11 @@ class FieldceptionWidgetBase extends WidgetBase {
 
     $element = [];
 
+    $options = [0 => 'All fields in same row'];
+    for ($i = 1; $i <= count($field_settings['storage']); $i++) {
+      $options[$i] = $i;
+    }
+
     if ($cardinality !== 1) {
       $element['primary'] = [
         '#type' => 'checkbox',
@@ -70,6 +75,11 @@ class FieldceptionWidgetBase extends WidgetBase {
         '#title' => $this->t('Label for add more button'),
         '#required' => TRUE,
         '#default_value' => $settings['more_label'],
+      ];
+      $element['draggable'] = [
+        '#type' => 'checkbox',
+        '#title' => $this->t('Allow values to be ordered'),
+        '#default_value' => $settings['draggable'],
       ];
     }
 
@@ -154,6 +164,10 @@ class FieldceptionWidgetBase extends WidgetBase {
     $summary = [];
 
     if ($cardinality !== 1) {
+      $summary[] = $this->t('Allow ordering: %value', ['%value' => $settings['draggable'] ? 'Yes' : 'No']);
+    }
+
+    if ($cardinality !== 1) {
       $summary[] = $this->t('Allow primary selection: %value', ['%value' => $settings['primary'] ? 'Yes' : 'No']);
       $summary[] = $this->t('More label: %value', ['%value' => $settings['more_label']]);
     }
@@ -184,6 +198,7 @@ class FieldceptionWidgetBase extends WidgetBase {
       $id_prefix = $elements['widget']['#id_prefix'];
       $wrapper_id = $elements['widget']['#wrapper_id'];
       $elements['#id'] = $wrapper_id;
+      $elements['widget']['#cardinality'] = $cardinality;
 
       $elements['add_more'] = [
         '#type' => 'submit',
@@ -275,12 +290,18 @@ class FieldceptionWidgetBase extends WidgetBase {
     if ($cardinality == FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED) {
       $field_state = static::getWidgetState($parents, $field_name, $form_state);
       $max = $field_state['items_count'];
+      $is_multiple = TRUE;
     }
     else {
       $max = $cardinality;
+      $is_multiple = ($cardinality > 1);
     }
 
-    $elements = [];
+    $elements = [
+      '#is_multiple' => $is_multiple,
+      '#allow_more' => $allow_more,
+      '#header' => [],
+    ];
 
     // Remove items that are no longer within delta limit.
     foreach ($items as $delta => $item) {
@@ -302,7 +323,6 @@ class FieldceptionWidgetBase extends WidgetBase {
       $wrapper_id = Html::getUniqueId($id_prefix . '-add-more-wrapper');
       $elements['#id_prefix'] = $id_prefix;
       $elements['#wrapper_id'] = $wrapper_id;
-      $elements['#header'][] = '';
     }
 
     if ($primary) {
@@ -319,6 +339,8 @@ class FieldceptionWidgetBase extends WidgetBase {
       $element = [
         '#title' => '',
         '#descrition' => '',
+        '#is_multiple' => $is_multiple,
+        '#allow_more' => $allow_more,
       ];
       $element['#attributes']['class'][] = 'fieldception-element';
 
@@ -347,6 +369,29 @@ class FieldceptionWidgetBase extends WidgetBase {
       }
 
       $element = $this->formSingleElement($items, $delta, $element, $form, $form_state);
+
+      if ($element) {
+        // Input field for the delta (drag-n-drop reordering).
+        if ($is_multiple) {
+          if ($settings['draggable']) {
+            // We name the element '_weight' to avoid clashing with elements
+            // defined by widget.
+            $element['_weight'] = [
+              '#type' => 'weight',
+              '#title' => $this->t('Weight for row @number', ['@number' => $delta + 1]),
+              '#title_display' => 'invisible',
+              '#delta' => $max,
+              '#default_value' => $items[$delta]->_weight ?: $delta,
+              '#weight' => 100,
+              '#attributes' => [
+                'class' => ['table-sort-weight'],
+              ],
+            ];
+          }
+        }
+
+        $elements[$delta] = $element;
+      }
 
       if ($allow_more) {
         $element['actions'] = [
@@ -378,6 +423,21 @@ class FieldceptionWidgetBase extends WidgetBase {
       }
 
       $elements[$delta] = $element;
+    }
+
+    if ($is_multiple && !empty($settings['draggable'])) {
+      $title = $this->fieldDefinition->getLabel();
+      $description = FieldFilteredMarkup::create(\Drupal::token()->replace($this->fieldDefinition->getDescription()));
+      $elements += [
+        '#theme' => 'field_multiple_value_form',
+        '#field_name' => $this->fieldDefinition->getName(),
+        '#cardinality' => $cardinality,
+        '#cardinality_multiple' => $this->fieldDefinition->getFieldStorageDefinition()->isMultiple(),
+        '#required' => $this->fieldDefinition->isRequired(),
+        '#title' => $title,
+        '#description' => $description,
+        '#max_delta' => $max,
+      ];
     }
 
     return $elements;
@@ -429,6 +489,7 @@ class FieldceptionWidgetBase extends WidgetBase {
 
     NestedArray::setValue($user_input, $parents_to_field, $user_input_field_values);
     $form_state->setUserInput($user_input);
+    $form_state->setValue($parents_to_field, $user_input_field_values);
 
     $field_state['items_count']--;
 
@@ -544,13 +605,6 @@ class FieldceptionWidgetBase extends WidgetBase {
     $path = array_merge($form['#parents'], [$field_name]);
     $key_exists = NULL;
     $values = NestedArray::getValue($form_state->getValues(), $path, $key_exists);
-
-    $cardinality = $this->fieldDefinition->getFieldStorageDefinition()->getCardinality();
-    $allow_more = $cardinality == FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED && !$form_state->isProgrammed();
-    if ($allow_more && !empty($values)) {
-      // When allow more, we always have a hidden empty element.
-      array_pop($values);
-    }
 
     if ($key_exists) {
       // Account for drag-and-drop reordering if needed.

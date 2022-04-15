@@ -26,12 +26,32 @@ class FieldceptionWidgetTable extends FieldceptionWidgetBase {
     $field_settings = $this->getFieldSettings();
     $elements['#type'] = 'table';
 
+    if (isset($elements['#theme']) && $elements['#theme'] == 'field_multiple_value_form') {
+      $elements['#header']['_drag'] = '';
+    }
+
     foreach ($field_settings['storage'] as $subfield => $config) {
       $elements['#header'][$subfield] = $config['label'];
       if (!empty($field_settings['fields'][$subfield]['required'])) {
         $elements['#header'][$subfield] .= '<span class="js-form-required form-required"></span>';
       }
       $elements['#header'][$subfield] = Markup::create($elements['#header'][$subfield]);
+    }
+
+    if (isset($elements['#theme']) && $elements['#theme'] == 'field_multiple_value_form') {
+      $elements['#tabledrag'] = [
+        [
+          'action' => 'order',
+          'relationship' => 'sibling',
+          'group' => 'table-sort-weight',
+        ],
+      ];
+      $elements['#header']['_weight'] = $this->t('Weight');
+      unset($elements['#theme']);
+    }
+
+    if (!empty($elements['#is_multiple'])) {
+      $elements['#header']['_more'] = '';
     }
     return $elements;
   }
@@ -40,6 +60,13 @@ class FieldceptionWidgetTable extends FieldceptionWidgetBase {
    * {@inheritdoc}
    */
   public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state) {
+    $settings = $this->getSettings();
+    if (!empty($element['#allow_more']) && !empty($settings['draggable'])) {
+      $element['_drag'] = [
+        '#plain_text' => '',
+      ];
+      $element['#attributes']['class'][] = 'draggable';
+    }
     $element = parent::formElement($items, $delta, $element, $form, $form_state);
     $element['#type'] = 'container';
     return $element;
