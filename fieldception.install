@@ -6,7 +6,7 @@
  */
 
 /**
- * Migrade exo_image_media formatters to renamed exo_image_media_drimage.
+ * Migrade from fieldception widget to fieldception_table widget.
  */
 function fieldception_update_8001() {
   if ($form_displays = \Drupal::entityTypeManager()->getStorage('entity_form_display')->loadMultiple()) {
