@@ -22,6 +22,7 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
   public static function defaultSettings() {
     return [
       'item_label' => 'Item @count',
+      'fields_per_row' => 0,
     ] + parent::defaultSettings();
   }
 
@@ -30,6 +31,7 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
    */
   public function settingsForm(array $form, FormStateInterface $form_state) {
     $settings = $this->getSettings();
+    $field_settings = $this->getFieldSettings();
     $cardinality = $this->fieldDefinition->getFieldStorageDefinition()->getCardinality();
     $element = parent::settingsForm($form, $form_state);
     if ($cardinality !== 1) {
@@ -40,6 +42,18 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
         '#default_value' => $settings['item_label'],
       ];
     }
+
+    $options = [0 => 'All fields in same row'];
+    for ($i = 1; $i <= count($field_settings['storage']); $i++) {
+      $options[$i] = $i;
+    }
+    $element['fields_per_row'] = [
+      '#type' => 'select',
+      '#options' => $options,
+      '#required' => TRUE,
+      '#title' => $this->t('Fields per row'),
+      '#default_value' => $settings['fields_per_row'],
+    ];
     return $element;
   }
 
@@ -49,6 +63,7 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
   public function settingsSummary() {
     $cardinality = $this->fieldDefinition->getFieldStorageDefinition()->getCardinality();
     $summary = parent::settingsSummary();
+    $summary[] = $this->t('Fields per row: %value', ['%value' => empty($settings['fields_per_row']) ? 'All' : $settings['fields_per_row']]);
     if ($cardinality !== 1) {
       $settings = $this->getSettings();
       $summary[] = $this->t('Item label: %value', ['%value' => $settings['item_label']]);
