@@ -422,6 +422,8 @@ class FieldceptionWidgetBase extends WidgetBase {
         ];
       }
 
+      \Drupal::moduleHandler()->alter('fieldception_widget', $element, $this->fieldDefinition, $settings);
+
       $elements[$delta] = $element;
     }
 
@@ -520,6 +522,7 @@ class FieldceptionWidgetBase extends WidgetBase {
     $subform = $form;
     $subform['#parents'][] = $field_name;
     $subform['#parents'][] = $delta;
+    $weight = 0;
     foreach ($field_settings['storage'] as $subfield => $config) {
       $subfield_settings = isset($settings['fields'][$subfield]) ? $settings['fields'][$subfield] : [];
       $subfield_widget_settings = isset($subfield_settings['settings']) ? $subfield_settings['settings'] : [];
@@ -533,6 +536,8 @@ class FieldceptionWidgetBase extends WidgetBase {
         $subfield_items->appendItem();
       }
       $element[$subfield] = $this->formSubfieldElement($subfield_items, $config, $subfield_widget, $subform, $form_state);
+      $element[$subfield]['#weight'] = $weight;
+      $weight++;
     }
     return $element;
   }
@@ -662,20 +667,20 @@ class FieldceptionWidgetBase extends WidgetBase {
             $delta,
             $subfield,
           ]);
+          $subform[$subfield_name]['widget'][0] = NestedArray::getValue($form, $subfield_widget_path);
           $subfield_widget_array_path = array_merge($form['#array_parents'], [
             $field_name,
             'widget',
             $delta,
             $subfield,
           ]);
-          $subform[$subfield_name]['widget'][0] = NestedArray::getValue($form, $subfield_widget_path);
           if (!$subfield_widget->getPluginDefinition()['multiple_values']) {
             $subfield_value = [$subfield_value];
           }
           $form_state->setValue($subfield_path, $subfield_value);
           WidgetBase::setWidgetState($subform['#parents'], $subfield_name, $form_state, $field_state);
           $subfield_widget->extractFormValues($subfield_items, $subform, $form_state);
-          if ($subfield_items->isEmpty() && !empty($subfield_field_settings['required'])) {
+          if ($subfield_items->isEmpty() && (!empty($subfield_field_settings['required']) || is_null($subfield_field_settings['required']))) {
             $empty_item_subfields[$delta][$subfield] = [
               'label' => $config['label'],
               'path' => $subfield_widget_array_path,

@@ -475,10 +475,12 @@ class FieldceptionHelper {
       $langcode = $entity->language()->getId();
 
       // Merge in third party settings.
-      $field_config = $entity->get($field_name)->getFieldDefinition();
-      foreach ($field_config->getThirdPartyProviders() as $provider) {
-        foreach ($field_config->getThirdPartySettings($provider) as $id => $value) {
-          $subfield_definition->setThirdPartySetting($provider, $id, $value);
+      if ($entity->hasField($field_name)) {
+        $field_config = $entity->get($field_name)->getFieldDefinition();
+        foreach ($field_config->getThirdPartyProviders() as $provider) {
+          foreach ($field_config->getThirdPartySettings($provider) as $id => $value) {
+            $subfield_definition->setThirdPartySetting($provider, $id, $value);
+          }
         }
       }
 
@@ -488,12 +490,12 @@ class FieldceptionHelper {
 
       // Convert values to subvalues.
       if (!is_array($values)) {
-        $field = $entity->get($field_name);
-        if (!$field->get($delta)) {
-          $values = [];
-        }
-        else {
-          $values = $field->get($delta)->toArray();
+        $values = [];
+        if ($entity->hasField($field_name)) {
+          $field = $entity->get($field_name);
+          if ($field->get($delta)) {
+            $values = $field->get($delta)->toArray();
+          }
         }
       }
       $value = $this->convertValueToSubfieldValue($subfield_definition, $values);

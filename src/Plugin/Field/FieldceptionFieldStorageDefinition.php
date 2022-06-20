@@ -180,7 +180,7 @@ class FieldceptionFieldStorageDefinition extends BaseFieldDefinition implements 
       ->setProvider($definition->getProvider())
       ->setCustomStorage($definition->hasCustomStorage())
       ->setRevisionable($definition->isRevisionable())
-      ->setSettings($config['settings'])
+      ->setSettings($config['settings'] ?? [])
       ->setTargetEntityTypeId($definition->getTargetEntityTypeId())
       ->setTranslatable($definition->isTranslatable());
     return $storage;
@@ -190,10 +190,9 @@ class FieldceptionFieldStorageDefinition extends BaseFieldDefinition implements 
    * {@inheritdoc}
    */
   public function getOptionsProvider($property_name, FieldableEntityInterface $entity) {
-    if (is_subclass_of($this->getFieldItemClass(), OptionsProviderInterface::class)) {
-      $field_type_plugin_manager = \Drupal::service('plugin.manager.field.field_type');
-
-      $item_list_class = $field_type_plugin_manager->getDefinition($this->getFieldStorageDefinition()->getType())['list_class'];
+    $field_type_plugin_manager = \Drupal::service('plugin.manager.field.field_type');
+    $item_list_class = $field_type_plugin_manager->getDefinition($this->getFieldStorageDefinition()->getType())['list_class'];
+    if ($item_list_class) {
       $items_list = $item_list_class::createInstance($this->getFieldStorageDefinition(), $this->getName(), $entity->getTypedData());
       $item = $field_type_plugin_manager->createFieldItem($items_list, 0);
       return $item;
