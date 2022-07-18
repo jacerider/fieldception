@@ -13,7 +13,7 @@ function fieldception_update_8001() {
     foreach ($form_displays as $form_display_id => $form_display) {
       /** @var \Drupal\Core\Entity\Display\EntityDisplayInterface $form_display */
       foreach ($form_display->getComponents() as $field_name => $component) {
-        if (isset($component['type']) && $component['type'] == 'fieldception') {
+        if (isset($component['type']) && $component['type'] === 'fieldception') {
           $component['type'] = 'fieldception_table';
           $form_display->setComponent($field_name, $component)->save();
         }
