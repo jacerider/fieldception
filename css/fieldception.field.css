@@ -9,3 +9,38 @@ td.fieldception-size-min {
 td.fieldception-position-center {
   text-align: center;
 }
+
+.fieldception-default-widget > .fieldset-wrapper > div {
+  border-top: 1px dotted #cccccc;
+  padding-top: 10px !important;
+  margin-top: 10px !important;
+}
+
+.fieldception-groups > div {
+  margin: 5px 0 0 !important;
+}
+
+.fieldception-group {
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-flow: row nowrap;
+  flex-flow: row nowrap;
+  -ms-flex-align: end;
+  align-items: flex-end;
+  width: 100%;
+	margin: 0 !important;
+}
+
+.fieldception-group > div {
+	-ms-flex-positive: 1;
+	flex-grow: 1;
+	-ms-flex-negative: 1;
+	flex-shrink: 1;
+	-ms-flex-preferred-size: auto;
+	flex-basis: auto;
+	margin: 0 !important;
+}
+
+.fieldception-groups-2 .fieldception-group > div {
+  width: 50%;
+}

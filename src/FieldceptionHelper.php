@@ -243,13 +243,15 @@ class FieldceptionHelper {
    *   A subfield definition.
    */
   public function getSubfieldStorageDefinition(FieldStorageDefinitionInterface $definition, array $config, $subfield) {
-    // $this->prepareConfig($config);
     $key = $this->toKey([
       $definition,
       $config,
       $subfield,
     ]);
     if (!isset($this->subfieldStorageDefinitions[$key])) {
+      if (strpos($config['type'], 'field_ui:entity_reference') !== FALSE) {
+        $config['type'] = 'entity_reference';
+      }
       $this->subfieldStorageDefinitions[$key] = FieldceptionFieldStorageDefinition::createFromParentFieldStorageDefinition($definition, $config, $subfield)
         ->setKey($key);
     }

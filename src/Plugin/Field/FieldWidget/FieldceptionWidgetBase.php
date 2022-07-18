@@ -215,6 +215,17 @@ class FieldceptionWidgetBase extends WidgetBase {
       ];
     }
     $elements['widget']['#process'][] = [get_class($this), 'formWidgetProcess'];
+
+    // Allow modules to alter the full field widget form element.
+    $context = [
+      'form' => $form,
+      'widget' => $this,
+      'items' => $items,
+      'delta' => 0,
+      'default' => $this->isDefaultValueWidget($form_state),
+    ];
+    \Drupal::moduleHandler()->alter(['field_widget_form', 'field_widget_' . $this->getPluginId() . '_form'], $elements, $form_state, $context);
+
     return $elements;
   }
 
@@ -301,6 +312,7 @@ class FieldceptionWidgetBase extends WidgetBase {
       '#is_multiple' => $is_multiple,
       '#allow_more' => $allow_more,
       '#header' => [],
+      '#max' => $max,
     ];
 
     // Remove items that are no longer within delta limit.
