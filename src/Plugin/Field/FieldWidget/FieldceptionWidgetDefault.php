@@ -100,31 +100,30 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
 
     $count = $group = 1;
     $fields_per_row = $settings['fields_per_row'];
-    $element['#attributes']['class'][] = 'fieldception-groups';
-    $element['#attributes']['class'][] = 'fieldception-groups-' . $fields_per_row;
+    if ($fields_per_row > 1) {
+      $element['#attributes']['class'][] = 'fieldception-groups';
+      $element['#attributes']['class'][] = 'fieldception-groups-' . $fields_per_row;
 
-    foreach ($field_settings['storage'] as $subfield => $config) {
-      if (!isset($element['group_' . $group])) {
-        $element['group_' . $group] = [
-          '#type' => 'container',
-          '#process' => [[get_class(), 'processParents']],
-          '#attributes' => ['class' => ['fieldception-group']],
-        ];
-        if ($settings['inline']) {
-          $element['group_' . $group]['#attributes']['class'][] = 'container-inline';
+      foreach ($field_settings['storage'] as $subfield => $config) {
+        if (!isset($element['group_' . $group])) {
+          $element['group_' . $group] = [
+            '#type' => 'container',
+            '#process' => [[get_class(), 'processParents']],
+            '#attributes' => ['class' => ['fieldception-group']],
+          ];
         }
-      }
 
-      $element['group_' . $group][$subfield] = $element[$subfield];
-      unset($element[$subfield]);
+        $element['group_' . $group][$subfield] = $element[$subfield];
+        unset($element[$subfield]);
 
-      $element['#group_count'] = $group;
-      if ($fields_per_row && $count >= $fields_per_row) {
-        $count = 1;
-        $group++;
-      }
-      else {
-        $count++;
+        $element['#group_count'] = $group;
+        if ($fields_per_row && $count >= $fields_per_row) {
+          $count = 1;
+          $group++;
+        }
+        else {
+          $count++;
+        }
       }
     }
     return $element;
