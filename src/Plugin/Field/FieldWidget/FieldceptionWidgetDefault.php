@@ -21,7 +21,7 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
    */
   public static function defaultSettings() {
     return [
-      'item_label' => 'Item @count',
+      'item_label' => '',
       'fields_per_row' => 0,
     ] + parent::defaultSettings();
   }
@@ -34,13 +34,6 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
     $field_settings = $this->getFieldSettings();
     $cardinality = $this->fieldDefinition->getFieldStorageDefinition()->getCardinality();
     $element = parent::settingsForm($form, $form_state);
-    if ($cardinality !== 1) {
-      $element['item_label'] = [
-        '#type' => 'textfield',
-        '#title' => $this->t('Label for each item'),
-        '#default_value' => $settings['item_label'],
-      ];
-    }
 
     $options = [0 => 'All fields in same row'];
     for ($i = 1; $i <= count($field_settings['storage']); $i++) {
@@ -52,7 +45,18 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
       '#required' => TRUE,
       '#title' => $this->t('Fields per row'),
       '#default_value' => $settings['fields_per_row'],
+      '#weight' => -10,
     ];
+
+    if ($cardinality !== 1) {
+      $element['item_label'] = [
+        '#type' => 'textfield',
+        '#title' => $this->t('Label for each item'),
+        '#default_value' => $settings['item_label'],
+        '#description' => $this->t('Example: Item @count.'),
+        '#weight' => -10,
+      ];
+    }
     return $element;
   }
 
@@ -60,11 +64,11 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
    * {@inheritdoc}
    */
   public function settingsSummary() {
+    $settings = $this->getSettings();
     $cardinality = $this->fieldDefinition->getFieldStorageDefinition()->getCardinality();
     $summary = parent::settingsSummary();
-    $summary[] = $this->t('Fields per row: %value', ['%value' => empty($settings['fields_per_row']) ? 'All' : $settings['fields_per_row']]);
+    $summary[] = $this->t('Fields per row: %value', ['%value' => $settings['fields_per_row'] ?: 'All']);
     if ($cardinality !== 1) {
-      $settings = $this->getSettings();
       $summary[] = $this->t('Item label: %value', ['%value' => $settings['item_label']]);
     }
     return $summary;
@@ -114,7 +118,9 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
         }
 
         $element['group_' . $group][$subfield] = $element[$subfield];
-        unset($element[$subfield]);
+        $element[$subfield] = [
+          '#group' => 'group_' . $group,
+        ];
 
         $element['#group_count'] = $group;
         if ($fields_per_row && $count >= $fields_per_row) {

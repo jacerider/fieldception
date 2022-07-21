@@ -911,12 +911,55 @@ class FieldceptionItem extends FieldItemBase {
       $subfield_definition = $this->fieldceptionHelper->getSubfieldDefinition($field_definition, $config, $subfield);
       $subfield_items = $this->fieldceptionHelper->getSubfieldItemList($subfield_definition, $entity, 0, $this->getValue());
       $subfield_storage = $this->fieldceptionHelper->getSubfieldStorage($subfield_definition->getFieldStorageDefinition(), $subfield_items);
-
       if (!$subfield_storage->isEmpty()) {
         return FALSE;
       }
     }
 
+    return TRUE;
+  }
+
+  /**
+   * Check if specific subfield is empty.
+   *
+   * @return bool
+   *   TRUE if subfield is empty.
+   */
+  public function isFieldEmpty($subfield) {
+    /** @var \Drupal\fieldception\FieldceptionHelper $fieldception_helper */
+    $fieldception_helper = \Drupal::service('fieldception.helper');
+    $settings = $this->getSettings();
+    $entity = $this->getEntity();
+    $field_definition = $this->getFieldDefinition();
+    if (isset($settings['storage'][$subfield])) {
+      $config = $settings['storage'][$subfield];
+      $subfield_definition = $fieldception_helper->getSubfieldDefinition($field_definition, $config, $subfield);
+      $subfield_items = $fieldception_helper->getSubfieldItemList($subfield_definition, $entity, 0, $this->getValue());
+      $subfield_storage = $fieldception_helper->getSubfieldStorage($subfield_definition->getFieldStorageDefinition(), $subfield_items);
+      return $subfield_storage->isEmpty();
+    }
+    return TRUE;
+  }
+
+  /**
+   * Get a specific field's value.
+   *
+   * @return bool
+   *   TRUE if subfield is empty.
+   */
+  public function getFieldValue($subfield) {
+    /** @var \Drupal\fieldception\FieldceptionHelper $fieldception_helper */
+    $fieldception_helper = \Drupal::service('fieldception.helper');
+    $settings = $this->getSettings();
+    $entity = $this->getEntity();
+    $field_definition = $this->getFieldDefinition();
+    if (isset($settings['storage'][$subfield])) {
+      $config = $settings['storage'][$subfield];
+      $subfield_definition = $fieldception_helper->getSubfieldDefinition($field_definition, $config, $subfield);
+      $subfield_items = $fieldception_helper->getSubfieldItemList($subfield_definition, $entity, 0, $this->getValue());
+      $subfield_storage = $fieldception_helper->getSubfieldStorage($subfield_definition->getFieldStorageDefinition(), $subfield_items);
+      return $subfield_storage->getValue();
+    }
     return TRUE;
   }
 

@@ -21,9 +21,20 @@ class FieldceptionWidgetTable extends FieldceptionWidgetBase {
   /**
    * {@inheritdoc}
    */
-  protected function formMultipleElements(FieldItemListInterface $items, array &$form, FormStateInterface $form_state) {
-    $elements = parent::formMultipleElements($items, $form, $form_state);
+  public function form(FieldItemListInterface $items, array &$form, FormStateInterface $form_state, $get_delta = NULL) {
+    $elements = parent::form($items, $form, $form_state, $get_delta);
     $field_settings = $this->getFieldSettings();
+    $elements['#attributes']['class'][] = 'fieldception-table-widget';
+    $elements['#attributes']['class'][] = 'fieldception-groups-' . count($field_settings['storage']);
+    return $elements;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function formMultipleElements(FieldItemListInterface $items, array &$form, FormStateInterface $form_state) {
+    $field_settings = $this->getFieldSettings();
+    $elements = parent::formMultipleElements($items, $form, $form_state);
     $elements['#type'] = 'table';
 
     if (isset($elements['#theme']) && $elements['#theme'] == 'field_multiple_value_form') {

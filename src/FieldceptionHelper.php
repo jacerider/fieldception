@@ -290,7 +290,7 @@ class FieldceptionHelper {
    * @param \Drupal\Core\Field\FieldItemListInterface|null $subfield_item_list
    *   The field item list.
    *
-   * @return \Drupal\Core\Field\WidgetInterface
+   * @return \Drupal\Core\Field\FieldItemInterface
    *   The storage plugin.
    */
   public function getSubfieldStorage(FieldStorageDefinitionInterface $subfield_definition, $subfield_item_list = NULL) {

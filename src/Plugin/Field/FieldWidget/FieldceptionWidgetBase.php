@@ -190,6 +190,7 @@ class FieldceptionWidgetBase extends WidgetBase {
     $elements['#description'] = $description;
     $elements['#attached']['library'][] = 'fieldception/field';
     $elements['#attributes']['class'][] = 'fieldception-field';
+    $elements['#field_name'] = $this->fieldDefinition->getName();
 
     if ($allow_more && is_null($get_delta)) {
       $field_name = $this->fieldDefinition->getName();
@@ -647,6 +648,7 @@ class FieldceptionWidgetBase extends WidgetBase {
       $field_definition = $this->fieldDefinition;
       $entity = $items->getEntity();
       $empty_item_subfields = [];
+      $new_values = [];
 
       foreach ($values as $delta => $val) {
         $subform = $form;
@@ -665,8 +667,8 @@ class FieldceptionWidgetBase extends WidgetBase {
           if (is_null($subfield_value)) {
             continue;
           }
-          $subfield_settings = isset($settings['fields'][$subfield]) ? $settings['fields'][$subfield] : [];
-          $subfield_widget_settings = isset($subfield_settings['settings']) ? $subfield_settings['settings'] : [];
+          $subfield_settings = $settings['fields'][$subfield] ?? [];
+          $subfield_widget_settings = $subfield_settings['settings'] ?? [];
           $subfield_definition = $this->fieldceptionHelper->getSubfieldDefinition($field_definition, $config, $subfield);
           $subfield_name = $subfield_definition->getName();
           $subfield_widget_type = $this->getSubfieldWidgetType($subfield_definition);
@@ -692,7 +694,7 @@ class FieldceptionWidgetBase extends WidgetBase {
           $form_state->setValue($subfield_path, $subfield_value);
           WidgetBase::setWidgetState($subform['#parents'], $subfield_name, $form_state, $field_state);
           $subfield_widget->extractFormValues($subfield_items, $subform, $form_state);
-          if ($subfield_items->isEmpty() && (!empty($subfield_field_settings['required']) || is_null($subfield_field_settings['required']))) {
+          if ($subfield_items->isEmpty() && (isset($subfield_field_settings['required']) && (!empty($subfield_field_settings['required']) || is_null($subfield_field_settings['required'])))) {
             $empty_item_subfields[$delta][$subfield] = [
               'label' => $config['label'],
               'path' => $subfield_widget_array_path,
