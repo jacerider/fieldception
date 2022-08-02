@@ -650,14 +650,18 @@ class FieldceptionWidgetBase extends WidgetBase {
       $empty_item_subfields = [];
       $new_values = [];
 
+      $extract = FALSE;
       foreach ($values as $delta => $val) {
         $subform = $form;
         $subform['#parents'][] = $field_name;
         $subform['#parents'][] = $delta;
         $new_values[$delta] = [];
         foreach ($field_settings['storage'] as $subfield => $config) {
-          $subfield_field_settings = isset($field_settings['fields'][$subfield]) ? $field_settings['fields'][$subfield] : [];
+          $subfield_field_settings = $field_settings['fields'][$subfield] ?? [];
           $subfield_value = NULL;
+          if ($items->getFieldDefinition()->getName() === 'field_jurisdictions_explain') {
+
+          }
           if (isset($values[$delta][$subfield])) {
             $subfield_value = $values[$delta][$subfield];
           }
@@ -667,6 +671,7 @@ class FieldceptionWidgetBase extends WidgetBase {
           if (is_null($subfield_value)) {
             continue;
           }
+          $extract = TRUE;
           $subfield_settings = $settings['fields'][$subfield] ?? [];
           $subfield_widget_settings = $subfield_settings['settings'] ?? [];
           $subfield_definition = $this->fieldceptionHelper->getSubfieldDefinition($field_definition, $config, $subfield);
@@ -718,7 +723,8 @@ class FieldceptionWidgetBase extends WidgetBase {
       }
 
       // Let the widget massage the submitted values.
-      $values = $this->massageFormValues($new_values, $form, $form_state);
+      $values = $extract ? $new_values : $values;
+      $values = $this->massageFormValues($values, $form, $form_state);
 
       // Assign the values and remove the empty ones.
       $items->setValue($values);
