@@ -906,7 +906,6 @@ class FieldceptionItem extends FieldItemBase {
     $settings = $this->getSettings();
     $entity = $this->getEntity();
     $field_definition = $this->getFieldDefinition();
-
     foreach ($settings['storage'] as $subfield => $config) {
       $subfield_definition = $this->fieldceptionHelper->getSubfieldDefinition($field_definition, $config, $subfield);
       $subfield_items = $this->fieldceptionHelper->getSubfieldItemList($subfield_definition, $entity, 0, $this->getValue());
@@ -915,7 +914,6 @@ class FieldceptionItem extends FieldItemBase {
         return FALSE;
       }
     }
-
     return TRUE;
   }
 
