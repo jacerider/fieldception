@@ -114,6 +114,8 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
             '#type' => 'container',
             '#process' => [[get_class(), 'processParents']],
             '#attributes' => ['class' => ['fieldception-group']],
+            '#prefix' => '<div class="fieldception-group-wrapper">',
+            '#suffix' => '</div>',
           ];
         }
 
@@ -131,6 +133,10 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
           $count++;
         }
       }
+    }
+    else {
+      $element['#prefix'] = '<div class="fieldception-wrapper">';
+      $element['#suffix'] = '</div>';
     }
     return $element;
   }

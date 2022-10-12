@@ -90,11 +90,11 @@ class FieldceptionWidgetBase extends WidgetBase {
 
     foreach ($field_settings['storage'] as $subfield => $config) {
       $wrapper_id = Html::getId('fieldception-' . $field_name . '-' . $subfield);
-      $subfield_settings = (isset($settings['fields'][$subfield]) ? $settings['fields'][$subfield] : []) + [
+      $subfield_settings = ($settings['fields'][$subfield] ?? []) + [
         'position' => '',
         'size' => '',
       ];
-      $subfield_widget_settings = isset($subfield_settings['settings']) ? $subfield_settings['settings'] : [];
+      $subfield_widget_settings = $subfield_settings['settings'] ?? [];
       $subfield_definition = $this->fieldceptionHelper->getSubfieldDefinition($field_definition, $config, $subfield);
       // Get type. First use submitted value, Then current settings. Then
       // default formatter if nothing has been set yet.
@@ -537,8 +537,9 @@ class FieldceptionWidgetBase extends WidgetBase {
     $subform['#parents'][] = $delta;
     $weight = 0;
     foreach ($field_settings['storage'] as $subfield => $config) {
-      $subfield_settings = isset($settings['fields'][$subfield]) ? $settings['fields'][$subfield] : [];
-      $subfield_widget_settings = isset($subfield_settings['settings']) ? $subfield_settings['settings'] : [];
+      $config['required'] = $field_settings['fields'][$subfield]['required'] ?? FALSE;
+      $subfield_settings = $settings['fields'][$subfield] ?? [];
+      $subfield_widget_settings = $subfield_settings['settings'] ?? [];
       $subfield_definition = $this->fieldceptionHelper->getSubfieldDefinition($field_definition, $config, $subfield);
       $subfield_widget_type = $this->getSubfieldWidgetType($subfield_definition);
       $subfield_widget = $this->fieldceptionHelper->getSubfieldWidget($subfield_definition, $subfield_widget_type, $subfield_widget_settings);
@@ -563,6 +564,7 @@ class FieldceptionWidgetBase extends WidgetBase {
       '#title' => $config['label'],
       '#description' => '',
       '#required' => FALSE,
+      '#fieldception_required' => $config['required'],
       '#field_name' => $this->fieldDefinition->getName(),
       '#field_parents' => $form['#parents'],
       '#delta' => 0,
@@ -740,7 +742,7 @@ class FieldceptionWidgetBase extends WidgetBase {
             }
           }
         }
-        $field_state['original_deltas'][$delta] = isset($item->_original_delta) ? $item->_original_delta : $delta;
+        $field_state['original_deltas'][$delta] = $item->_original_delta ?? $delta;
         unset($item->_original_delta, $item->_weight);
       }
       static::setWidgetState($form['#parents'], $field_name, $form_state, $field_state);

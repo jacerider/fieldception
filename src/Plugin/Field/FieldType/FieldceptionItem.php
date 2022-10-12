@@ -1038,6 +1038,7 @@ class FieldceptionItem extends FieldItemBase {
       $subfield_storage = $fieldception_helper->getSubfieldStorage($subfield_definition);
       foreach ($subfield_storage::propertyDefinitions($subfield_definition) as $property_name => $property) {
         $property->setRequired(FALSE);
+        $property->setLabel($config['label'] . ' ' . $property->getLabel());
         $properties[$subfield . '_' . $property_name] = $property;
       }
     }
