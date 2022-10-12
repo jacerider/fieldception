@@ -4,7 +4,6 @@ namespace Drupal\fieldception\Plugin\Field;
 
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Entity\FieldableEntityInterface;
-use Drupal\Core\TypedData\OptionsProviderInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Config\Entity\ThirdPartySettingsInterface;
 
