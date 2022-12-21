@@ -131,6 +131,22 @@ class FieldceptionWidgetBase extends WidgetBase {
       ];
       $element['fields'][$subfield]['settings'] = [];
       $element['fields'][$subfield]['settings'] = $subfield_widget->settingsForm($element['fields'][$subfield]['settings'], $form_state);
+      // Invoke hook_field_widget_third_party_settings_form(), keying resulting
+      // subforms by module name.
+      $third_part_settings_form = [];
+      \Drupal::moduleHandler()->invokeAllWith(
+        'field_widget_third_party_settings_form',
+        function (callable $hook, string $module) use (&$third_part_settings_form, $subfield_widget, $subfield_definition, &$form, $form_state) {
+          $third_part_settings_form[$module] = $hook(
+            $subfield_widget,
+            $subfield_definition,
+            $form_state->getFormObject()->getEntity()->getEntityTypeId(),
+            $form,
+            $form_state
+          );
+        }
+      );
+      $element['fields'][$subfield]['settings']['third_party_settings'] = $third_part_settings_form;
     }
 
     return $element;
@@ -225,7 +241,10 @@ class FieldceptionWidgetBase extends WidgetBase {
       'delta' => 0,
       'default' => $this->isDefaultValueWidget($form_state),
     ];
-    \Drupal::moduleHandler()->alter(['field_widget_form', 'field_widget_' . $this->getPluginId() . '_form'], $elements, $form_state, $context);
+    \Drupal::moduleHandler()->alter([
+      'field_widget_form',
+      'field_widget_' . $this->getPluginId() . '_form',
+    ], $elements, $form_state, $context);
 
     return $elements;
   }
@@ -580,6 +599,17 @@ class FieldceptionWidgetBase extends WidgetBase {
       '#subfield_config' => $config,
     ];
     $element = $subfield_widget->formElement($subfield_items, 0, $element, $form, $form_state);
+    $context = [
+      'form' => $form,
+      'widget' => $subfield_widget,
+      'items' => $subfield_items,
+      'delta' => 0,
+      'default' => $this->isDefaultValueWidget($form_state),
+    ];
+    \Drupal::moduleHandler()->alter([
+      'field_widget_single_element_form',
+      'field_widget_single_element_' . $subfield_widget->getPluginId() . '_form',
+    ], $element, $form_state, $context);
     return $element;
   }
 

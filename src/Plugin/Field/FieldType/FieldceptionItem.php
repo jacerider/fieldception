@@ -21,7 +21,7 @@ use Drupal\Core\DependencyInjection\DependencySerializationTrait;
  *   id = "fieldception",
  *   label = @Translation("Fieldception"),
  *   description = @Translation("Fields within a field."),
- *   default_widget = "fieldception",
+ *   default_widget = "fieldception_default",
  *   default_formatter = "fieldception_unformatted_list",
  *   list_class = "\Drupal\fieldception\Plugin\Field\FieldceptionItemList",
  * )
@@ -701,13 +701,17 @@ class FieldceptionItem extends FieldItemBase {
 
       $element['_edit']['settings'] = [];
       $element['_edit']['settings'] = $subfield_storage->fieldSettingsForm($element['_edit']['settings'], $subfield_form_state);
+
       if (!empty($element['_edit']['settings'])) {
         $element['_edit']['settings']['#fieldception_subfield'] = $subfield;
-        $element['_edit']['settings'] += [
-          '#element_validate' => [],
-        ];
-        array_unshift($element['_edit']['settings']['#element_validate'], [$class_name, 'settingsEditSettingsToSettings']);
       }
+      $element['_edit']['settings'] += [
+        '#element_validate' => [],
+      ];
+      array_unshift($element['_edit']['settings']['#element_validate'], [
+        $class_name,
+        'editFieldValidate',
+      ]);
 
       $element['_edit']['actions'] = [
         '#type' => 'actions',
@@ -741,9 +745,9 @@ class FieldceptionItem extends FieldItemBase {
   }
 
   /**
-   * After form build.
+   * Get temp form for subfield.
    */
-  public static function fieldFormAfterBuild($form, FormStateInterface $form_state) {
+  protected static function getTempFormData($form, FormStateInterface $form_state, $subfield) {
     /** @var \Drupal\fieldception\FieldceptionHelper $fieldception_helper */
     $fieldception_helper = \Drupal::service('fieldception.helper');
     $storage = $form_state->get('fieldception_storage');
@@ -751,22 +755,41 @@ class FieldceptionItem extends FieldItemBase {
     $entity = $form_state->getFormObject()->getEntity();
     $form_object = $form_state->getFormObject();
     $field_definition = $form_object->getEntity();
+    $config = NestedArray::mergeDeep($storage[$subfield], $fields[$subfield]);
+    $subfield_definition = $fieldception_helper->getSubfieldDefinition($field_definition, $config, $subfield);
+    $subfield_entity = $fieldception_helper->getSubfieldConfig($subfield_definition, $form_object->getEntity());
+    $subfield_entity->set('third_party_settings', $subfield_entity->get('third_party_settings') + $entity->get('third_party_settings'));
+    if (!empty($config['settings']['third_party_settings'])) {
+      foreach ($config['settings']['third_party_settings'] as $module => $settings) {
+        foreach ($settings as $key => $value) {
+          $subfield_entity->setThirdPartySetting($module, $key, $value);
+        }
+      }
+    }
+    $form_object = clone $form_state->getFormObject();
+    $form_object->setEntity($subfield_entity);
+    $temp_form_state = clone $form_state;
+    $temp_form_state->setFormObject($form_object);
+    $form_id = 'form_field_config_edit_form';
+    $temp_form = $form;
+    $temp_form['settings'] = $form['settings']['_edit']['settings'];
+    \Drupal::moduleHandler()->alter(['form', $form_id], $temp_form, $temp_form_state, $form_id);
+    return [
+      'temp_form' => $temp_form,
+      'temp_form_state' => $temp_form_state,
+    ];
+  }
+
+  /**
+   * After form build.
+   */
+  public static function fieldFormAfterBuild($form, FormStateInterface $form_state) {
     $op = $form_state->get('fieldception_op');
 
     if ($op == 'edit' && ($subfield = $form_state->get('fieldception_field'))) {
-      $config = NestedArray::mergeDeep($storage[$subfield], $fields[$subfield]);
-      $subfield_definition = $fieldception_helper->getSubfieldDefinition($field_definition, $config, $subfield);
-      $subfield_entity = $fieldception_helper->getSubfieldConfig($subfield_definition, $form_object->getEntity());
-      $subfield_entity->set('third_party_settings', $entity->get('third_party_settings'));
-      $form_object = clone $form_state->getFormObject();
-      $form_object->setEntity($subfield_entity);
-      $temp_form_state = clone $form_state;
-      $temp_form_state->setFormObject($form_object);
-      $form_id = 'form_field_config_edit_form';
-      $temp_form = $form;
-      $temp_form['settings'] = $form['settings']['_edit']['settings'];
-      \Drupal::moduleHandler()->alter(['form', $form_id], $temp_form, $temp_form_state, $form_id);
+      $temp_form = static::getTempFormData($form, $form_state, $subfield)['temp_form'];
       $form['settings']['_edit']['settings'] = $temp_form['settings'];
+      $form['settings']['_edit']['settings']['third_party_settings'] = $temp_form['third_party_settings'];
       foreach ($temp_form['actions']['submit']['#submit'] as $key => $value) {
         if ($key > count($form['actions']['submit']['#submit'])) {
           $form['actions']['submit']['#submit'][] = $value;
@@ -799,14 +822,29 @@ class FieldceptionItem extends FieldItemBase {
   }
 
   /**
-   * Move nested setting values to parent setting values.
+   * Validate edit field form.
    */
-  public static function settingsEditSettingsToSettings($element, FormStateInterface $form_state) {
-    $form_state->setValue(['settings'], $form_state->getValue(['settings']) + $form_state->getValue([
+  public static function editFieldValidate($element, FormStateInterface $form_state) {
+    $subfield = $form_state->get('fieldception_field');
+
+    // Move nested setting values to parent setting values.
+    $settings = $form_state->getValue([
       'settings',
       '_edit',
       'settings',
-    ], []));
+    ]);
+    if (!empty($settings)) {
+      // Allow validation of subform.
+      $temp_form_data = static::getTempFormData($element, $form_state, $subfield);
+      $temp_form = $temp_form_data['temp_form'];
+      $temp_form_state = $temp_form_data['temp_form_state'];
+      $temp_form_state->setValues($settings);
+      $form_validator = \Drupal::service('form_validator');
+      $form_validator->validateForm('form_field_config_edit_form', $temp_form, $temp_form_state);
+      if ($temp_form_values = $temp_form_state->getValues()) {
+        $form_state->setValue(['settings', '_edit', 'settings'], $temp_form_values + $form_state->getValue(['settings', '_edit', 'settings'], []));
+      }
+    }
   }
 
   /**
@@ -817,20 +855,15 @@ class FieldceptionItem extends FieldItemBase {
     $fields = $form_state->get('fieldception_fields');
     $subfield = $form_state->get('fieldception_field');
     $settings = $form_state->getValue(['settings', '_edit'], []);
-    // Merge settings that were set to parent level via
-    // settingsEditSettingsToSettings().
-    $settings['settings'] = array_intersect_key($form_state->getValue(['settings']), $settings['settings']);
+
+    // Merge settings that were set to parent level via editFieldValidate().
     unset($settings['actions']);
     if (empty($settings['settings'])) {
       unset($settings['settings']);
     }
     $fields[$subfield] = array_intersect_key($settings, $fields[$subfield]);
+
     $form_state->set('fieldception_fields', $fields);
-    foreach ($form_state->getValue('third_party_settings', []) as $module => $values) {
-      foreach ($values as $key => $value) {
-        $entity->setThirdPartySetting($module, $key, $value);
-      }
-    }
     self::opSwitchFieldSubmit($form, $form_state);
     $form_state->setRebuild();
   }

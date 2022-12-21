@@ -336,10 +336,14 @@ class FieldceptionHelper {
       $settings,
     ]);
     if (!isset($this->subfieldWidgets[$key])) {
+      $third_party_settings = [];
+      foreach ($subfield_definition->getThirdPartyProviders() as $provider) {
+        $third_party_settings[$provider] = $subfield_definition->getThirdPartySettings($provider);
+      }
       $this->subfieldWidgets[$key] = $this->fieldWidgetPluginManager->createInstance($widget_type, [
         'field_definition' => $subfield_definition,
         'settings' => $settings,
-        'third_party_settings' => [],
+        'third_party_settings' => $settings['third_party_settings'] ?? [],
       ]);
     }
     return $this->subfieldWidgets[$key];
@@ -437,9 +441,15 @@ class FieldceptionHelper {
         ->setLabel($subfield_definition->getLabel())
         ->setSettings($subfield_definition->getSettings())
         ->set('field_type', $subfield_definition->getType());
+
+      foreach ($subfield_definition->getThirdPartyProviders() as $provider) {
+        foreach ($subfield_definition->getThirdPartySettings($provider) as $id => $value) {
+          $this->subfieldConfigs[$key]->setThirdPartySetting($provider, $id, $value);
+        }
+      }
       foreach ($field_config->getThirdPartyProviders() as $provider) {
         foreach ($field_config->getThirdPartySettings($provider) as $id => $value) {
-          $this->subfieldConfigs[$key]->setThirdPartySetting($provider, $key, $value);
+          $this->subfieldConfigs[$key]->setThirdPartySetting($provider, $id, $value);
         }
       }
     }

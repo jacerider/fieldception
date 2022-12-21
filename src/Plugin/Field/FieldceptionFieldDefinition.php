@@ -2,8 +2,6 @@
 
 namespace Drupal\fieldception\Plugin\Field;
 
-use Drupal\Core\Entity\FieldableEntityInterface;
-use Drupal\Core\TypedData\OptionsProviderInterface;
 use Drupal\Core\Config\Entity\ThirdPartySettingsInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldConfigBase;
@@ -81,7 +79,7 @@ class FieldceptionFieldDefinition extends FieldConfigBase implements ThirdPartyS
    */
   public function getSubfield() {
     $parts = explode(':', $this->getName());
-    return isset($parts[1]) ? $parts[1] : $parts[0];
+    return $parts[1] ?? $parts[0];
   }
 
   /**
@@ -139,7 +137,7 @@ class FieldceptionFieldDefinition extends FieldConfigBase implements ThirdPartyS
    * {@inheritdoc}
    */
   public function getThirdPartySettings($module) {
-    return isset($this->thirdPartySettings[$module]) ? $this->thirdPartySettings[$module] : [];
+    return $this->thirdPartySettings[$module] ?? [];
   }
 
   /**
@@ -208,12 +206,13 @@ class FieldceptionFieldDefinition extends FieldConfigBase implements ThirdPartyS
   public static function createFromParentFieldDefinition(FieldDefinitionInterface $definition, array $config, $subfield) {
     $name = $definition->getName() . ':' . $subfield;
     $settings = $definition->getSettings();
-    $field_settings = isset($settings['fields'][$subfield]['settings']) ? $settings['fields'][$subfield]['settings'] : [];
+    $field_settings = $settings['fields'][$subfield]['settings'] ?? [];
     $storage_definition = $definition->getFieldStorageDefinition();
     return static::create([
       'field_storage' => \Drupal::service('fieldception.helper')->getSubfieldStorageDefinition($storage_definition, $config, $subfield),
       'bundle' => $definition->getTargetBundle(),
       'settings' => $field_settings,
+      'thirdPartySettings' => $field_settings['third_party_settings'] ?? [],
       'name' => $name,
       'type' => $config['type'],
       'label' => $config['label'],
