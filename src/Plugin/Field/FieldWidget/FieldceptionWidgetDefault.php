@@ -21,6 +21,7 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
    */
   public static function defaultSettings() {
     return [
+      'wrapper' => 'fieldset',
       'item_label' => '',
       'fields_per_row' => 0,
     ] + parent::defaultSettings();
@@ -57,6 +58,15 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
         '#weight' => -10,
       ];
     }
+
+    $element['wrapper'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Wrapper'),
+      '#default_value' => $this->getSetting('wrapper'),
+      '#options' => $this->getWrapperOptions(),
+      '#required' => TRUE,
+    ];
+
     return $element;
   }
 
@@ -71,6 +81,7 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
     if ($cardinality !== 1) {
       $summary[] = $this->t('Item label: %value', ['%value' => $settings['item_label']]);
     }
+    $summary[] = $this->t('Wrapper type: @value', ['@value' => $this->getWrapperOptions()[$this->getSetting('wrapper')]]);
     return $summary;
   }
 
@@ -80,6 +91,7 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
   public function form(FieldItemListInterface $items, array &$form, FormStateInterface $form_state, $get_delta = NULL) {
     $elements = parent::form($items, $form, $form_state, $get_delta);
     $elements['#attributes']['class'][] = 'fieldception-default-widget';
+    $elements['#type'] = $this->getSetting('wrapper');
     return $elements;
   }
 
@@ -147,6 +159,18 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
   public static function processParents(&$element, FormStateInterface $form_state, &$complete_form) {
     array_pop($element['#parents']);
     return $element;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function getWrapperOptions() {
+    return [
+      'fieldset' => $this->t('Fieldset'),
+      'details' => $this->t('Details'),
+      'container' => $this->t('Container'),
+      'item' => $this->t('Item'),
+    ];
   }
 
 }

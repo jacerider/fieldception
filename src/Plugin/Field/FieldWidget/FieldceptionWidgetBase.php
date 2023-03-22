@@ -607,6 +607,8 @@ class FieldceptionWidgetBase extends WidgetBase {
       'default' => $this->isDefaultValueWidget($form_state),
     ];
     \Drupal::moduleHandler()->alter([
+      'field_widget_form',
+      'field_widget_' . $subfield_widget->getPluginId() . '_form',
       'field_widget_single_element_form',
       'field_widget_single_element_' . $subfield_widget->getPluginId() . '_form',
     ], $element, $form_state, $context);
