@@ -53,7 +53,8 @@ function fieldception_form_field_config_edit_form_alter(&$form, FormStateInterfa
   /** @var \Drupal\field\Entity\FieldConfig $field */
   $field = $form_state->getFormObject()->getEntity();
 
-  // Check field type and add config form but only if field type is telephone.
+  // Check field type and add config form but only if field type is
+  // fieldception.
   if ($field->getType() == 'fieldception') {
     $form['#id'] = 'fieldception-wrapper';
     $form['#process'][] = ['\Drupal\fieldception\Plugin\Field\FieldType\FieldceptionItem', 'fieldFormAfterBuild'];
