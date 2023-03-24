@@ -583,6 +583,7 @@ class FieldceptionWidgetBase extends WidgetBase {
       '#title' => $config['label'],
       '#description' => '',
       '#required' => FALSE,
+      '#fieldception_subfield' => TRUE,
       '#fieldception_required' => $config['required'],
       '#field_name' => $this->fieldDefinition->getName(),
       '#field_parents' => $form['#parents'],
