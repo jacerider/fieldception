@@ -485,13 +485,14 @@ class FieldceptionHelper {
       $entity = clone $entity;
       $field_name = $subfield_definition->getParentfield();
       $langcode = $entity->language()->getId();
-
       // Merge in third party settings.
       if ($entity->hasField($field_name)) {
         $field_config = $entity->get($field_name)->getFieldDefinition();
         foreach ($field_config->getThirdPartyProviders() as $provider) {
           foreach ($field_config->getThirdPartySettings($provider) as $id => $value) {
-            $subfield_definition->setThirdPartySetting($provider, $id, $value);
+            if (!$subfield_definition->getThirdPartySetting($provider, $id)) {
+              $subfield_definition->setThirdPartySetting($provider, $id, $value);
+            }
           }
         }
       }
