@@ -670,10 +670,6 @@ class FieldceptionWidgetBase extends WidgetBase {
         foreach ($values as $delta => &$value) {
           $value['_original_delta'] = $delta;
         }
-
-        usort($values, function ($a, $b) {
-          return SortArray::sortByKeyInt($a, $b, '_weight');
-        });
       }
 
       $field_state = static::getWidgetState($form['#parents'], $field_name, $form_state);
@@ -690,13 +686,12 @@ class FieldceptionWidgetBase extends WidgetBase {
         $subform = $form;
         $subform['#parents'][] = $field_name;
         $subform['#parents'][] = $delta;
-        $new_values[$delta] = [];
+        $new_values[$delta] = [
+          '_weight' => $val['_weight'] ?? 0,
+        ];
         foreach ($field_settings['storage'] as $subfield => $config) {
           $subfield_field_settings = $field_settings['fields'][$subfield] ?? [];
           $subfield_value = NULL;
-          if ($items->getFieldDefinition()->getName() === 'field_jurisdictions_explain') {
-
-          }
           if (isset($values[$delta][$subfield])) {
             $subfield_value = $values[$delta][$subfield];
           }
@@ -760,6 +755,12 @@ class FieldceptionWidgetBase extends WidgetBase {
       // Let the widget massage the submitted values.
       $values = $extract ? $new_values : $values;
       $values = $this->massageFormValues($values, $form, $form_state);
+
+      if (!$this->handlesMultipleValues()) {
+        usort($values, function ($a, $b) {
+          return SortArray::sortByKeyInt($a, $b, '_weight');
+        });
+      }
 
       // Assign the values and remove the empty ones.
       $items->setValue($values);
