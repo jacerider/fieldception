@@ -81,7 +81,7 @@ class FieldceptionItem extends FieldItemBase {
     foreach ($settings['storage'] as $subfield => $config) {
       $subfield_storage_definition = $this->fieldceptionHelper->getSubfieldStorageDefinition($field_storage_definition, $config, $subfield);
       $subfield_storage = $this->fieldceptionHelper->getSubfieldStorage($subfield_storage_definition);
-      $settings['fields'][$subfield] = isset($settings['fields'][$subfield]) ? $settings['fields'][$subfield] : [];
+      $settings['fields'][$subfield] = $settings['fields'][$subfield] ?? [];
       // Merge in the subfield field settings.
       $settings['fields'][$subfield] += ['settings' => []];
       $settings['fields'][$subfield]['settings'] = NestedArray::mergeDeep(
@@ -130,10 +130,10 @@ class FieldceptionItem extends FieldItemBase {
     }
     $op = $form_state->get('fieldception_op');
     if (empty($op)) {
-      $op = empty($storage) ? 'add' : 'fields';
+      $op = empty($storage) ? 'storage_add' : 'fields';
     }
     if (empty($storage)) {
-      $op = 'add';
+      $op = 'storage_add';
     }
     $form_state->set('fieldception_op', $op);
 
@@ -205,8 +205,8 @@ class FieldceptionItem extends FieldItemBase {
       $form['_storage'][$subfield]['actions']['edit'] = [
         '#type' => 'submit',
         '#value' => $this->t('Settings'),
-        '#name' => $subfield . '_edit',
-        '#submit' => [[$class_name, 'opSwitchEditSubmit']],
+        '#name' => $subfield . '_storage_edit',
+        '#submit' => [[$class_name, 'opStorageSwitchEditSubmit']],
         '#subfield' => $subfield,
         '#limit_validation_errors' => [['_storage', $subfield]],
         '#ajax' => [
@@ -218,7 +218,7 @@ class FieldceptionItem extends FieldItemBase {
         '#type' => 'submit',
         '#value' => $this->t('Remove'),
         '#name' => $subfield . '_remove',
-        '#submit' => [[$class_name, 'removeFieldSubmit']],
+        '#submit' => [[$class_name, 'removeStorageFieldSubmit']],
         '#subfield' => $subfield,
         '#limit_validation_errors' => [['_storage', $subfield]],
         '#ajax' => [
@@ -242,34 +242,34 @@ class FieldceptionItem extends FieldItemBase {
       $delta++;
     }
 
-    $form['_edit'] = [
+    $form['_storage_edit'] = [
       '#type' => 'fieldset',
       '#title' => $this->t('Field Settings'),
-      '#access' => $op == 'edit',
+      '#access' => $op == 'storage_edit',
       '#tree' => TRUE,
     ];
-    if ($op == 'edit' && ($subfield = $form_state->get('fieldception_field'))) {
+    if ($op == 'storage_edit' && ($subfield = $form_state->get('fieldception_field'))) {
       $config = $storage[$subfield];
       $subfield_definition = $this->fieldceptionHelper->getSubfieldDefinition($field_definition, $config, $subfield);
       $subfield_items = $this->fieldceptionHelper->getSubfieldItemList($subfield_definition, $entity);
       $subfield_storage = $this->fieldceptionHelper->getSubfieldStorage($subfield_definition->getFieldStorageDefinition(), $subfield_items);
-      $form['_edit']['label'] = [
+      $form['_storage_edit']['label'] = [
         '#type' => 'textfield',
         '#title' => $this->t('Field label'),
         '#default_value' => $config['label'],
         '#required' => TRUE,
       ];
-      $form['_edit']['settings'] = [];
-      $form['_edit']['settings'] = $subfield_storage->storageSettingsForm($form['_edit']['settings'], $form_state, FALSE);
+      $form['_storage_edit']['settings'] = [];
+      $form['_storage_edit']['settings'] = $subfield_storage->storageSettingsForm($form['_storage_edit']['settings'], $form_state, FALSE);
 
-      if (empty($form['_edit']['settings'])) {
-        $form['_edit']['settings']['#markup'] = $this->t('This field has no additional storage settings.');
+      if (empty($form['_storage_edit']['settings'])) {
+        $form['_storage_edit']['settings']['#markup'] = $this->t('This field has no additional storage settings.');
       }
-      $form['_edit']['settings']['#parents'] = ['settings'];
-      $form['_edit']['actions'] = [
+      $form['_storage_edit']['settings']['#parents'] = ['settings'];
+      $form['_storage_edit']['actions'] = [
         '#type' => 'actions',
       ];
-      $form['_edit']['actions']['submit'] = [
+      $form['_storage_edit']['actions']['submit'] = [
         '#type' => 'submit',
         '#value' => $this->t('Update'),
         '#submit' => [[$class_name, 'editStorageFieldSubmit']],
@@ -279,10 +279,10 @@ class FieldceptionItem extends FieldItemBase {
         ],
       ];
       if (!empty($storage)) {
-        $form['_edit']['actions']['cancel'] = [
+        $form['_storage_edit']['actions']['cancel'] = [
           '#type' => 'submit',
           '#value' => $this->t('Cancel'),
-          '#submit' => [[$class_name, 'editFieldCancel']],
+          '#submit' => [[$class_name, 'editStorageFieldCancel']],
           '#limit_validation_errors' => [],
           '#ajax' => [
             'callback' => [$class_name, 'refreshAjax'],
@@ -295,7 +295,7 @@ class FieldceptionItem extends FieldItemBase {
     $form['_add'] = [
       '#type' => 'fieldset',
       '#title' => $this->t('Add Nested Field'),
-      '#access' => $op == 'add',
+      '#access' => $op == 'storage_add',
       '#tree' => TRUE,
     ];
     $form['_add']['label'] = [
@@ -330,7 +330,7 @@ class FieldceptionItem extends FieldItemBase {
       $form['_add']['actions']['cancel'] = [
         '#type' => 'submit',
         '#value' => $this->t('Cancel'),
-        '#submit' => [[$class_name, 'opSwitchFieldSubmit']],
+        '#submit' => [[$class_name, 'opStorageSwitchFieldSubmit']],
         '#limit_validation_errors' => [],
         '#ajax' => [
           'callback' => [$class_name, 'refreshAjax'],
@@ -353,13 +353,19 @@ class FieldceptionItem extends FieldItemBase {
     $form['cardinality_container']['#access'] = $op == 'fields';
     $form['actions']['#access'] = $op == 'fields';
     $form['#prefix'] = '';
-    array_unshift($form['actions']['submit']['#submit'], [get_class($this), 'storageBeforeSave']);
-    $form['actions']['submit']['#submit'][] = [get_class($this), 'storageAfterSave'];
+    $form['actions']['submit']['#submit'][] = [
+      get_class($this),
+      'storageAfterSave',
+    ];
+    array_unshift($form['actions']['submit']['#submit'], [
+      get_class($this),
+      'storageBeforeSave',
+    ]);
     $form['actions']['submit']['#weight'] = -1;
     $form['actions']['add'] = [
       '#type' => 'submit',
       '#value' => $this->t('Add another field'),
-      '#submit' => [[$class_name, 'opSwitchAddSubmit']],
+      '#submit' => [[$class_name, 'opStorageSwitchAddSubmit']],
       '#ajax' => [
         'callback' => [$class_name, 'refreshAjax'],
         'wrapper' => $form['#id'],
@@ -377,7 +383,7 @@ class FieldceptionItem extends FieldItemBase {
     $storage = $form_state->get('fieldception_storage');
     if (!empty($storage)) {
       $ordered_storage = [];
-      foreach ($form_state->getValue('_storage') as $subfield => $data) {
+      foreach ($form_state->getValue(['field_storage', 'subform', '_storage'], $form_state->getValue('_storage')) as $subfield => $data) {
         $ordered_storage[$subfield] = array_intersect_key($storage[$subfield], array_flip([
           'id',
           'type',
@@ -388,6 +394,9 @@ class FieldceptionItem extends FieldItemBase {
           'settings' => [],
         ];
       }
+      // Support D10 after field settings were merged.
+      $form_state->setValue(['field_storage', 'subform', 'settings', 'storage'], $ordered_storage);
+      // Backwards support.
       $form_state->setValue(['settings', 'storage'], $ordered_storage);
     }
   }
@@ -424,6 +433,9 @@ class FieldceptionItem extends FieldItemBase {
    * Submit handler for the "edit storage" button.
    */
   public static function editStorageFieldSubmit(array $form, FormStateInterface $form_state) {
+    $trigger = $form_state->getTriggeringElement();
+    $parents = $trigger['#parents'];
+    array_splice($parents, -2);
     $storage = $form_state->get('fieldception_storage');
     $subfield = $form_state->get('fieldception_field');
     $settings = $form_state->getValue(['settings'], []);
@@ -433,29 +445,29 @@ class FieldceptionItem extends FieldItemBase {
       $type = $storage[$subfield]['type'];
       if (strpos($type, 'field_ui:') !== FALSE) {
         // @see \Drupal\field_ui\Form\FieldStorageAddForm::submitForm
-        list(, $type, $option_key) = explode(':', $type, 3);
+        [, $type, $option_key] = explode(':', $type, 3);
       }
       $storage[$subfield]['type'] = $type;
     }
     unset($settings['storage']);
-    $storage[$subfield]['label'] = $form_state->getValue(['_edit', 'label']);
+    $storage[$subfield]['label'] = $form_state->getValue(array_merge($parents, ['label']));
     $storage[$subfield]['settings'] = $settings;
     $form_state->set('fieldception_storage', $storage);
-    self::opSwitchFieldSubmit($form, $form_state);
+    self::opStorageSwitchFieldSubmit($form, $form_state);
     $form_state->setRebuild();
   }
 
   /**
    * Submit handler for the "edit storage" button.
    */
-  public static function editFieldCancel(array $form, FormStateInterface $form_state) {
+  public static function editStorageFieldCancel(array $form, FormStateInterface $form_state) {
     $storage = $form_state->get('fieldception_storage');
     $subfield = $form_state->get('fieldception_field');
     if (!empty($storage[$subfield]['new'])) {
-      self::removeFieldSubmit($form, $form_state, $subfield);
+      self::removeStorageFieldSubmit($form, $form_state, $subfield);
     }
     else {
-      self::opSwitchFieldSubmit($form, $form_state);
+      self::opStorageSwitchFieldSubmit($form, $form_state);
     }
     $form_state->setRebuild();
   }
@@ -463,13 +475,40 @@ class FieldceptionItem extends FieldItemBase {
   /**
    * Submit handler for the "remove storage" button.
    */
-  public static function removeFieldSubmit(array $form, FormStateInterface $form_state, $subfield = NULL) {
+  public static function removeStorageFieldSubmit(array $form, FormStateInterface $form_state, $subfield = NULL) {
     $button = $form_state->getTriggeringElement();
     $subfield = $subfield ? $subfield : $button['#subfield'];
     $storage = $form_state->get('fieldception_storage');
     unset($storage[$subfield]);
     $form_state->set('fieldception_storage', $storage);
     $form_state->setRebuild();
+  }
+
+  /**
+   * Submit handler for the "add storage" button.
+   */
+  public static function opStorageSwitchAddSubmit(array $form, FormStateInterface $form_state) {
+    $form_state->set('fieldception_op', 'storage_add');
+    $form_state->setRebuild(TRUE);
+  }
+
+  /**
+   * Submit handler for the "add storage" button.
+   */
+  public static function opStorageSwitchEditSubmit(array $form, FormStateInterface $form_state, $subfield = NULL) {
+    $button = $form_state->getTriggeringElement();
+    $form_state->set('fieldception_op', 'storage_edit');
+    $subfield = $subfield ? $subfield : $button['#subfield'];
+    $form_state->set('fieldception_field', $subfield);
+    $form_state->setRebuild(TRUE);
+  }
+
+  /**
+   * Submit handler for the "add storage" button.
+   */
+  public static function opStorageSwitchFieldSubmit(array $form, FormStateInterface $form_state) {
+    $form_state->set('fieldception_op', 'fields');
+    $form_state->setRebuild(TRUE);
   }
 
   /**
@@ -773,6 +812,7 @@ class FieldceptionItem extends FieldItemBase {
     $form_id = 'form_field_config_edit_form';
     $temp_form = $form;
     $temp_form['settings'] = $form['settings']['_edit']['settings'];
+    $temp_form['field_storage']['subform'] = [];
     \Drupal::moduleHandler()->alter(['form', $form_id], $temp_form, $temp_form_state, $form_id);
     return [
       'temp_form' => $temp_form,
@@ -815,6 +855,7 @@ class FieldceptionItem extends FieldItemBase {
           $form[$key]['#access'] = FALSE;
         }
       }
+      $form['field_storage']['#access'] = $op === 'storage_edit';
       $form['default_value']['#attributes']['class'][] = 'hidden';
     }
     $form['settings']['#weight'] = -5;
@@ -842,7 +883,11 @@ class FieldceptionItem extends FieldItemBase {
       $form_validator = \Drupal::service('form_validator');
       $form_validator->validateForm('form_field_config_edit_form', $temp_form, $temp_form_state);
       if ($temp_form_values = $temp_form_state->getValues()) {
-        $form_state->setValue(['settings', '_edit', 'settings'], $temp_form_values + $form_state->getValue(['settings', '_edit', 'settings'], []));
+        $form_state->setValue(['settings', '_edit', 'settings'], $temp_form_values + $form_state->getValue([
+          'settings',
+          '_edit',
+          'settings',
+        ], []));
       }
     }
   }
@@ -851,7 +896,6 @@ class FieldceptionItem extends FieldItemBase {
    * Submit handler for the "edit form" button.
    */
   public static function editFieldSubmit(array $form, FormStateInterface $form_state) {
-    $entity = $form_state->getFormObject()->getEntity();
     $fields = $form_state->get('fieldception_fields');
     $subfield = $form_state->get('fieldception_field');
     $settings = $form_state->getValue(['settings', '_edit'], []);
@@ -898,29 +942,6 @@ class FieldceptionItem extends FieldItemBase {
       $subfield_items = $this->fieldceptionHelper->getSubfieldItemList($subfield_definition, $entity);
       $subfield_storage = $this->fieldceptionHelper->getSubfieldStorage($subfield_definition->getFieldStorageDefinition(), $subfield_items);
       $field_constraints = $subfield_storage->getConstraints();
-      if ($subfield_storage->getPluginId() == 'field_item:integer' && !$subfield_storage->getSetting('unsigned')) {
-        // Amazingly, Drupal 8 does not check max size on signed integer fields.
-        // @see https://www.drupal.org/project/drupal/issues/2722781
-        $label = $subfield_definition->getLabel();
-        list($min, $max) = $this->getRange($subfield_storage->getSetting('unsigned'), $subfield_storage->getSetting('size'));
-        $field_constraints[] = $constraint_manager->create('ComplexData', [
-          'value' => [
-            'Range' => [
-              'min' => $min,
-              'minMessage' => t('%name: the value may be no less than %min.', [
-                '%name' => $label,
-                '%min' => $min,
-              ]),
-              'max' => $max,
-              'maxMessage' => t('%name: the value may be no greater than %max.', [
-                '%name' => $label,
-                '%max' => $max,
-              ]),
-            ],
-          ],
-        ]);
-      }
-
       if (!empty($field_constraints)) {
         $constraints[] = $constraint_manager->create('Fieldception', [
           'subfieldItems' => $subfield_items,
