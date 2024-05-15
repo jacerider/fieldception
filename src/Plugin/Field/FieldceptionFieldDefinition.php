@@ -78,7 +78,7 @@ class FieldceptionFieldDefinition extends FieldConfigBase implements ThirdPartyS
    *   The subfield name.
    */
   public function getSubfield() {
-    $parts = explode(':', $this->getName());
+    $parts = explode('.', $this->getName());
     return $parts[1] ?? $parts[0];
   }
 
@@ -89,7 +89,7 @@ class FieldceptionFieldDefinition extends FieldConfigBase implements ThirdPartyS
    *   The parent field name.
    */
   public function getParentfield() {
-    $parts = explode(':', $this->getName());
+    $parts = explode('.', $this->getName());
     return $parts[0];
   }
 
@@ -204,7 +204,7 @@ class FieldceptionFieldDefinition extends FieldConfigBase implements ThirdPartyS
    * @return $this
    */
   public static function createFromParentFieldDefinition(FieldDefinitionInterface $definition, array $config, $subfield) {
-    $name = $definition->getName() . ':' . $subfield;
+    $name = $definition->getName() . '.' . $subfield;
     $settings = $definition->getSettings();
     $field_settings = $settings['fields'][$subfield]['settings'] ?? [];
     $storage_definition = $definition->getFieldStorageDefinition();

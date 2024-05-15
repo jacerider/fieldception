@@ -93,8 +93,6 @@ class FieldceptionItem extends FieldItemBase {
         self::defaultSubfieldSettings(),
         $settings['fields'][$subfield]
       );
-      // Merge into storage settings.
-      $settings['storage'][$subfield]['settings'] = $settings['fields'][$subfield]['settings'] + $settings['storage'][$subfield]['settings'];
     }
     return $settings;
   }
@@ -253,19 +251,26 @@ class FieldceptionItem extends FieldItemBase {
       $subfield_definition = $this->fieldceptionHelper->getSubfieldDefinition($field_definition, $config, $subfield);
       $subfield_items = $this->fieldceptionHelper->getSubfieldItemList($subfield_definition, $entity);
       $subfield_storage = $this->fieldceptionHelper->getSubfieldStorage($subfield_definition->getFieldStorageDefinition(), $subfield_items);
+
       $form['_storage_edit']['label'] = [
         '#type' => 'textfield',
         '#title' => $this->t('Field label'),
         '#default_value' => $config['label'],
         '#required' => TRUE,
       ];
+
       $form['_storage_edit']['settings'] = [];
+      // $subform_state = SubformState::createForSubform($form['_storage_edit']['settings'], $form, $form_state);
       $form['_storage_edit']['settings'] = $subfield_storage->storageSettingsForm($form['_storage_edit']['settings'], $form_state, FALSE);
 
       if (empty($form['_storage_edit']['settings'])) {
         $form['_storage_edit']['settings']['#markup'] = $this->t('This field has no additional storage settings.');
       }
-      $form['_storage_edit']['settings']['#parents'] = ['settings'];
+      $form['_storage_edit']['settings']['#parents'] = [
+        'field_storage',
+        'subform',
+        'settings',
+      ];
       $form['_storage_edit']['actions'] = [
         '#type' => 'actions',
       ];
@@ -396,8 +401,6 @@ class FieldceptionItem extends FieldItemBase {
       }
       // Support D10 after field settings were merged.
       $form_state->setValue(['field_storage', 'subform', 'settings', 'storage'], $ordered_storage);
-      // Backwards support.
-      $form_state->setValue(['settings', 'storage'], $ordered_storage);
     }
   }
 
@@ -438,7 +441,11 @@ class FieldceptionItem extends FieldItemBase {
     array_splice($parents, -2);
     $storage = $form_state->get('fieldception_storage');
     $subfield = $form_state->get('fieldception_field');
-    $settings = $form_state->getValue(['settings'], []);
+    $settings = $form_state->getValue([
+      'field_storage',
+      'subform',
+      'settings',
+    ], []);
     if (!empty($storage[$subfield]['new'])) {
       unset($storage[$subfield]['new']);
       // Check if we're dealing with a preconfigured field.
@@ -454,6 +461,12 @@ class FieldceptionItem extends FieldItemBase {
     $storage[$subfield]['settings'] = $settings;
     $form_state->set('fieldception_storage', $storage);
     self::opStorageSwitchFieldSubmit($form, $form_state);
+
+    // Reset allowed values.
+    if (array_key_exists('allowed_values', $form_state->getStorage())) {
+      unset($form_state->getStorage()['allowed_values']);
+    }
+
     $form_state->setRebuild();
   }
 

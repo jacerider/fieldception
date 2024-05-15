@@ -209,7 +209,7 @@ class FieldceptionHelper {
    * @param string $subfield
    *   The subfield name.
    *
-   * @return \Drupal\Core\Field\FieldConfigInterface
+   * @return \Drupal\fieldception\Plugin\Field\FieldceptionFieldDefinition
    *   A subfield definition.
    */
   public function getSubfieldDefinition(FieldConfigInterface $definition, array $config, $subfield) {

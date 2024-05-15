@@ -746,7 +746,10 @@ class FieldceptionWidgetBase extends WidgetBase {
           }
         }
         // Remove empty rows.
-        $row_values = NestedArray::filter($new_values[$delta]);
+        $row_values = NestedArray::filter($new_values[$delta], function ($value) {
+          // Allow value to be 0.
+          return $value || $value === '0';
+        });
         if (empty($row_values)) {
           unset($new_values[$delta]);
         }

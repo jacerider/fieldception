@@ -61,8 +61,8 @@ class FieldceptionFieldStorageDefinition extends BaseFieldDefinition implements 
    *   The subfield name.
    */
   public function getSubfield() {
-    $parts = explode(':', $this->getName());
-    return isset($parts[1]) ? $parts[1] : $parts[0];
+    $parts = explode('.', $this->getName());
+    return str_replace('_' . $this->getMainPropertyName(), '', $parts[1] ?? $parts[0]);
   }
 
   /**
@@ -72,8 +72,8 @@ class FieldceptionFieldStorageDefinition extends BaseFieldDefinition implements 
    *   The parent field name.
    */
   public function getParentfield() {
-    $parts = explode(':', $this->getName());
-    return $parts[0];
+    $parts = explode('.', $this->getName());
+    return str_replace('_' . $this->getMainPropertyName(), '', $parts[0]);
   }
 
   /**
@@ -120,7 +120,7 @@ class FieldceptionFieldStorageDefinition extends BaseFieldDefinition implements 
    * {@inheritdoc}
    */
   public function getThirdPartySettings($module) {
-    return isset($this->thirdPartySettings[$module]) ? $this->thirdPartySettings[$module] : [];
+    return $this->thirdPartySettings[$module] ?? [];
   }
 
   /**
@@ -167,7 +167,7 @@ class FieldceptionFieldStorageDefinition extends BaseFieldDefinition implements 
   public static function createFromParentFieldStorageDefinition(FieldStorageDefinitionInterface $definition, array $config, $subfield) {
     // FieldceptionHelper->getSubfieldItemList() will convert this back to
     // the actual field name.
-    $name = $definition->getName() . ':' . $subfield;
+    $name = $definition->getName() . '.' . $subfield . '_' . $definition->getMainPropertyName();
     $storage = static::create($config['type'])
       // Subfields only support single values.
       ->setCardinality(1)
