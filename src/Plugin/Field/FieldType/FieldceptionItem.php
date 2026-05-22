@@ -962,7 +962,9 @@ class FieldceptionItem extends FieldItemBase {
         ]);
       }
     }
-    $constraints[] = $constraint_manager->create('ComplexData', $subfield_constraints);
+    if (!empty($subfield_constraints)) {
+      $constraints[] = $constraint_manager->create('ComplexData', $subfield_constraints);
+    }
     return $constraints;
   }
 
