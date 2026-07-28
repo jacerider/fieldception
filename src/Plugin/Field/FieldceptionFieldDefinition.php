@@ -207,6 +207,7 @@ class FieldceptionFieldDefinition extends FieldConfigBase implements ThirdPartyS
     $name = $definition->getName() . '.' . $subfield;
     $settings = $definition->getSettings();
     $field_settings = $settings['fields'][$subfield]['settings'] ?? [];
+    static::applyNumericRangeDefaults($config, $field_settings);
     $storage_definition = $definition->getFieldStorageDefinition();
     return static::create([
       'field_storage' => \Drupal::service('fieldception.helper')->getSubfieldStorageDefinition($storage_definition, $config, $subfield),
@@ -217,6 +218,77 @@ class FieldceptionFieldDefinition extends FieldConfigBase implements ThirdPartyS
       'type' => $config['type'],
       'label' => $config['label'],
     ]);
+  }
+
+  /**
+   * Bounds numeric subfields to the range their storage column can hold.
+   *
+   * Core only enforces the 'min' and 'max' field settings, and only when they
+   * are explicitly configured. Left empty, a numeric subfield accepts any value
+   * the user types, and the overflow surfaces as an EntityStorageException
+   * ("Numeric value out of range") on save rather than as a form error.
+   *
+   * Defaulting the settings to the column's real range routes the check through
+   * core's own NumberWidget/Number element validation, so the user gets the
+   * standard "must be lower than or equal to" message instead. Explicitly
+   * configured values are never overridden.
+   *
+   * @param array $config
+   *   The subfield storage configuration, with 'type' and 'settings' keys.
+   * @param array $field_settings
+   *   The subfield field settings, altered by reference.
+   */
+  protected static function applyNumericRangeDefaults(array $config, array &$field_settings) {
+    $type = $config['type'] ?? NULL;
+    if (!in_array($type, ['integer', 'decimal'], TRUE)) {
+      return;
+    }
+    // Only step in when the site builder has not set a bound themselves.
+    $min_unset = !isset($field_settings['min']) || $field_settings['min'] === '';
+    $max_unset = !isset($field_settings['max']) || $field_settings['max'] === '';
+    if (!$min_unset && !$max_unset) {
+      return;
+    }
+
+    $storage_settings = ($config['settings'] ?? []) + \Drupal::service('plugin.manager.field.field_type')
+      ->getDefaultStorageSettings($type);
+
+    if ($type === 'integer') {
+      // Signed/unsigned limits of each MySQL integer size.
+      $limits = [
+        'tiny' => [-128, 127, 255],
+        'small' => [-32768, 32767, 65535],
+        'medium' => [-8388608, 8388607, 16777215],
+        'normal' => [-2147483648, 2147483647, 4294967295],
+        'big' => [PHP_INT_MIN, PHP_INT_MAX, PHP_INT_MAX],
+      ];
+      $size = $storage_settings['size'] ?? 'normal';
+      if (!isset($limits[$size])) {
+        return;
+      }
+      [$signed_min, $signed_max, $unsigned_max] = $limits[$size];
+      $unsigned = !empty($storage_settings['unsigned']);
+      $min = $unsigned ? 0 : $signed_min;
+      $max = $unsigned ? $unsigned_max : $signed_max;
+    }
+    else {
+      // NUMERIC(precision, scale) holds precision total digits, scale of them
+      // after the decimal point.
+      $precision = (int) ($storage_settings['precision'] ?? 10);
+      $scale = (int) ($storage_settings['scale'] ?? 2);
+      if ($precision <= $scale) {
+        return;
+      }
+      $max = pow(10, $precision - $scale) - pow(10, -$scale);
+      $min = -$max;
+    }
+
+    if ($min_unset) {
+      $field_settings['min'] = $min;
+    }
+    if ($max_unset) {
+      $field_settings['max'] = $max;
+    }
   }
 
   /**
