@@ -124,7 +124,7 @@ class FieldceptionWidgetDefault extends FieldceptionWidgetBase {
         if (!isset($element['group_' . $group])) {
           $element['group_' . $group] = [
             '#type' => 'container',
-            '#process' => [[get_class(), 'processParents']],
+            '#process' => [[self::class, 'processParents']],
             '#attributes' => ['class' => ['fieldception-group']],
             '#prefix' => '<div class="fieldception-group-wrapper">',
             '#suffix' => '</div>',
